@@ -77,3 +77,65 @@ chrome.storage.onChanged.addListener((changes, area) => {
     rebuildRules();
   }
 });
+
+function isMatch(url, rule) {
+  if (!rule.from || !rule.to || rule.enabled === false) return false;
+  if (rule.isRegex) {
+    try {
+      const regex = new RegExp(rule.from);
+      return regex.test(url);
+    } catch (e) {
+      return false;
+    }
+  } else {
+    try {
+      const urlObj = new URL(url);
+      const host = urlObj.hostname.replace(/^www\./i, "").toLowerCase();
+      const fromHost = rule.from.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/$/, "").toLowerCase();
+      return host === fromHost || host === `www.${fromHost}`;
+    } catch (e) {
+      return false;
+    }
+  }
+}
+
+let pendingRedirects = {}; 
+let confirmedRedirects = {}; 
+
+chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
+  if (details.frameId === 0) {
+    const { rules, enabled } = await getState();
+    if (!enabled) return;
+    
+    for (const rule of rules) {
+      if (isMatch(details.url, rule)) {
+        pendingRedirects[details.tabId] = { rule, time: Date.now() };
+        break;
+      }
+    }
+  }
+});
+
+chrome.webNavigation.onCommitted.addListener((details) => {
+  if (details.frameId === 0) {
+    const pending = pendingRedirects[details.tabId];
+    if (pending && Date.now() - pending.time < 5000) {
+      confirmedRedirects[details.tabId] = pending.rule;
+      delete pendingRedirects[details.tabId];
+    } else {
+      delete confirmedRedirects[details.tabId];
+    }
+  }
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "CHECK_REDIRECT") {
+    const tabId = sender.tab && sender.tab.id;
+    if (tabId && confirmedRedirects[tabId]) {
+      sendResponse({ redirected: true, rule: confirmedRedirects[tabId] });
+      delete confirmedRedirects[tabId]; 
+    } else {
+      sendResponse({ redirected: false });
+    }
+  }
+});
