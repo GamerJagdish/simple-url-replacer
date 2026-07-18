@@ -2,6 +2,8 @@ const fromInput = document.getElementById("fromInput");
 const toInput = document.getElementById("toInput");
 const regexFromInput = document.getElementById("regexFromInput");
 const regexToInput = document.getElementById("regexToInput");
+const regexTestInput = document.getElementById("regexTestInput");
+const regexTestResult = document.getElementById("regexTestResult");
 const addBtn = document.getElementById("addBtn");
 const ruleList = document.getElementById("ruleList");
 const emptyMsg = document.getElementById("emptyMsg");
@@ -11,6 +13,51 @@ const advancedInputs = document.getElementById("advancedInputs");
 const toast = document.getElementById("toast");
 const undoBtn = document.getElementById("undoBtn");
 const cancelEditBtn = document.getElementById("cancelEditBtn");
+const exportBtn = document.getElementById("exportBtn");
+const importBtn = document.getElementById("importBtn");
+const importFile = document.getElementById("importFile");
+
+if (exportBtn) {
+  exportBtn.addEventListener("click", () => {
+    chrome.storage.sync.get(["rules"], (data) => {
+      const rules = Array.isArray(data.rules) ? data.rules : [];
+      const blob = new Blob([JSON.stringify(rules, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "redirect_rules.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  });
+}
+
+if (importBtn && importFile) {
+  importBtn.addEventListener("click", () => importFile.click());
+  importFile.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const newRules = JSON.parse(event.target.result);
+        if (Array.isArray(newRules)) {
+          saveRules(newRules);
+          toast.style.display = "flex";
+          document.getElementById("toastMsg").textContent = "Rules imported successfully.";
+          undoBtn.style.display = "none";
+          setTimeout(() => { hideToast(); undoBtn.style.display = "block"; document.getElementById("toastMsg").textContent = "Rule deleted."; }, 3000);
+        } else {
+          alert("Invalid rules format");
+        }
+      } catch (err) {
+        alert("Invalid JSON file");
+      }
+      importFile.value = "";
+    };
+    reader.readAsText(file);
+  });
+}
 
 let editingIndex = -1;
 let undoTimeout = null;
@@ -46,7 +93,13 @@ function resetEditMode() {
   fromInput.value = "";
   toInput.value = "";
   regexFromInput.value = "";
+  regexFromInput.classList.remove("error");
   regexToInput.value = "";
+  if (regexTestInput) regexTestInput.value = "";
+  if (regexTestResult) {
+    regexTestResult.textContent = "";
+    regexTestResult.className = "test-result";
+  }
 }
 
 cancelEditBtn.addEventListener("click", resetEditMode);
@@ -161,6 +214,11 @@ function addRule() {
   let from, to;
 
   if (isAdvanced) {
+    try {
+      new RegExp(regexFromInput.value);
+    } catch(e) {
+      return;
+    }
     from = regexFromInput.value.trim();
     to = regexToInput.value.trim();
   } else {
@@ -193,6 +251,55 @@ advancedToggle.addEventListener("change", () => {
 });
 
 addBtn.addEventListener("click", addRule);
+
+function validateRegex() {
+  const pattern = regexFromInput.value;
+  const testUrl = regexTestInput ? regexTestInput.value : "";
+  let isValid = true;
+  let regex = null;
+
+  regexFromInput.classList.remove("error");
+  if (regexTestResult) {
+    regexTestResult.textContent = "";
+    regexTestResult.className = "test-result";
+  }
+
+  if (!pattern) return;
+
+  try {
+    regex = new RegExp(pattern);
+  } catch (e) {
+    isValid = false;
+    regexFromInput.classList.add("error");
+    if (regexTestResult) {
+      regexTestResult.textContent = "Invalid regular expression";
+      regexTestResult.classList.add("no-match");
+    }
+    return;
+  }
+
+  if (testUrl && regexTestResult) {
+    if (regex.test(testUrl)) {
+      const toPattern = regexToInput.value;
+      let replaced = "";
+      try {
+        replaced = testUrl.replace(regex, toPattern);
+      } catch(e) {}
+      regexTestResult.textContent = replaced ? `Match! -> ${replaced}` : "Match!";
+      regexTestResult.classList.add("match");
+    } else {
+      regexTestResult.textContent = "No match";
+      regexTestResult.classList.add("no-match");
+    }
+  }
+}
+
+regexFromInput.addEventListener("input", validateRegex);
+regexToInput.addEventListener("input", validateRegex);
+if (regexTestInput) {
+  regexTestInput.addEventListener("input", validateRegex);
+}
+
 [fromInput, toInput, regexFromInput, regexToInput].forEach((input) => {
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") addRule();

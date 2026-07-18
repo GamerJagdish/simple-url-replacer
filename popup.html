@@ -45,8 +45,10 @@
         <input type="text" id="toInput" placeholder="To, e.g. reddit.com" />
       </div>
       <div id="advancedInputs" class="advanced-row-inputs" style="display:none;">
-        <input type="text" id="regexFromInput" placeholder="From regex, e.g. ^https://(www\\.)?redditez\\.com" />
+        <input type="text" id="regexFromInput" placeholder="From regex, e.g. ^https://(www\.)?redditez\.com" />
         <input type="text" id="regexToInput" placeholder="To substitution, e.g. https://reddit.com" />
+        <input type="text" id="regexTestInput" placeholder="Test URL (optional)" />
+        <div id="regexTestResult" class="test-result"></div>
       </div>
       <div style="display:flex; gap:8px; margin-top: 8px;">
         <button class="secondary" id="cancelEditBtn" style="display: none; margin-top: 0; flex: 1;">Cancel</button>

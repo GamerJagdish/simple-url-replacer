@@ -9,6 +9,8 @@ const fromInput = document.getElementById("fromInput");
 const toInput = document.getElementById("toInput");
 const regexFromInput = document.getElementById("regexFromInput");
 const regexToInput = document.getElementById("regexToInput");
+const regexTestInput = document.getElementById("regexTestInput");
+const regexTestResult = document.getElementById("regexTestResult");
 const addBtn = document.getElementById("addBtn");
 const ruleList = document.getElementById("ruleList");
 const toast = document.getElementById("toast");
@@ -49,7 +51,13 @@ function resetEditMode() {
   fromInput.value = "";
   toInput.value = "";
   regexFromInput.value = "";
+  regexFromInput.classList.remove("error");
   regexToInput.value = "";
+  if (regexTestInput) regexTestInput.value = "";
+  if (regexTestResult) {
+    regexTestResult.textContent = "";
+    regexTestResult.className = "test-result";
+  }
 }
 
 cancelEditBtn.addEventListener("click", resetEditMode);
@@ -167,6 +175,11 @@ function addRule() {
   let from, to;
 
   if (isAdvanced) {
+    try {
+      new RegExp(regexFromInput.value);
+    } catch(e) {
+      return;
+    }
     from = regexFromInput.value.trim();
     to = regexToInput.value.trim();
   } else {
@@ -207,6 +220,55 @@ advancedToggle.addEventListener("change", () => {
 });
 
 addBtn.addEventListener("click", addRule);
+
+function validateRegex() {
+  const pattern = regexFromInput.value;
+  const testUrl = regexTestInput ? regexTestInput.value : "";
+  let isValid = true;
+  let regex = null;
+
+  regexFromInput.classList.remove("error");
+  if (regexTestResult) {
+    regexTestResult.textContent = "";
+    regexTestResult.className = "test-result";
+  }
+
+  if (!pattern) return;
+
+  try {
+    regex = new RegExp(pattern);
+  } catch (e) {
+    isValid = false;
+    regexFromInput.classList.add("error");
+    if (regexTestResult) {
+      regexTestResult.textContent = "Invalid regular expression";
+      regexTestResult.classList.add("no-match");
+    }
+    return;
+  }
+
+  if (testUrl && regexTestResult) {
+    if (regex.test(testUrl)) {
+      const toPattern = regexToInput.value;
+      let replaced = "";
+      try {
+        replaced = testUrl.replace(regex, toPattern);
+      } catch(e) {}
+      regexTestResult.textContent = replaced ? `Match! -> ${replaced}` : "Match!";
+      regexTestResult.classList.add("match");
+    } else {
+      regexTestResult.textContent = "No match";
+      regexTestResult.classList.add("no-match");
+    }
+  }
+}
+
+regexFromInput.addEventListener("input", validateRegex);
+regexToInput.addEventListener("input", validateRegex);
+if (regexTestInput) {
+  regexTestInput.addEventListener("input", validateRegex);
+}
+
 [fromInput, toInput, regexFromInput, regexToInput].forEach((input) => {
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") addRule();

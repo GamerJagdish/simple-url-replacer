@@ -9,8 +9,13 @@
 
 <body>
   <div class="wrap">
-    <header>
+    <header style="display:flex; justify-content:space-between; align-items:center;">
       <h1>URL Redirect Rules</h1>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" id="exportBtn" style="padding: 6px 12px; margin: 0;">Export</button>
+        <button class="secondary" id="importBtn" style="padding: 6px 12px; margin: 0;">Import</button>
+        <input type="file" id="importFile" accept=".json" style="display:none;">
+      </div>
     </header>
 
     <div class="panel">
@@ -35,8 +40,10 @@
           <input type="text" id="toInput" placeholder="To, e.g. reddit.com" />
         </div>
         <div id="advancedInputs" class="advanced-row-inputs" style="display:none;">
-          <input type="text" id="regexFromInput" placeholder="From regex, e.g. ^https://(www\\.)?redditez\\.com" />
+          <input type="text" id="regexFromInput" placeholder="From regex, e.g. ^https://(www\.)?redditez\.com" />
           <input type="text" id="regexToInput" placeholder="To substitution, e.g. https://reddit.com" />
+          <input type="text" id="regexTestInput" placeholder="Test URL (optional)" />
+          <div id="regexTestResult" class="test-result"></div>
         </div>
       </div>
       <ul id="ruleList"></ul>

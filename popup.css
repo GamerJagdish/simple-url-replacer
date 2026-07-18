@@ -359,6 +359,25 @@
       border-color: var(--accent);
     }
 
+    input.error {
+      border-color: var(--danger) !important;
+      background: rgba(242, 121, 90, 0.05) !important;
+    }
+
+    .test-result {
+      font-size: 11px;
+      min-height: 14px;
+      padding-left: 2px;
+    }
+
+    .test-result.match {
+      color: #9be3b0;
+    }
+
+    .test-result.no-match {
+      color: var(--danger);
+    }
+
     .toast {
       position: fixed;
       bottom: 16px;
