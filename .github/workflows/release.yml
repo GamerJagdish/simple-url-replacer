@@ -79,11 +79,12 @@ jobs:
             popup.css \
             popup.html \
             popup.js \
+            rules-common.js \
             LICENSE
 
           # 2. Unsigned Chromium/Edge version (strict MV3 without background.scripts)
           mkdir -p build-chromium
-          cp -r icons background.js content.js manifest.json options.css options.html options.js popup.css popup.html popup.js LICENSE build-chromium/
+          cp -r icons background.js content.js manifest.json options.css options.html options.js popup.css popup.html popup.js rules-common.js LICENSE build-chromium/
           jq 'del(.background.scripts)' build-chromium/manifest.json > build-chromium/manifest_tmp.json && mv build-chromium/manifest_tmp.json build-chromium/manifest.json
           cd build-chromium
           zip -r ../dist/simple-url-redirector-chromium.zip *
