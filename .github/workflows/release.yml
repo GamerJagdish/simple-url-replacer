@@ -45,11 +45,15 @@ jobs:
           PREV_TAG=$(git tag --sort=-v:refname | grep -v "^$CURRENT_VERSION$" | head -n 1)
           
           if [ -z "$PREV_TAG" ]; then
-            # If no previous tag, get all commits
-            CHANGELOG=$(git log --format="* %s (%h)%n%b")
+            # If no previous tag, get all commits except ci: and docs:
+            CHANGELOG=$(git log --grep="^(ci|docs):" --invert-grep -i --format="* %s (%h)")
           else
-            # Get all commits since the previous version tag
-            CHANGELOG=$(git log ${PREV_TAG}..HEAD --format="* %s (%h)%n%b")
+            # Get all commits since the previous version tag except ci: and docs:
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --grep="^(ci|docs):" --invert-grep -i --format="* %s (%h)")
+          fi
+          
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="* Maintenance and release updates."
           fi
           
           # Move the current version tag to the latest commit so source code zips update
