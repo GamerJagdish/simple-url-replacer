@@ -16,8 +16,28 @@ const elements = {
   cancelEditBtn: document.getElementById("cancelEditBtn"),
   exportBtn: document.getElementById("exportBtn"),
   importBtn: document.getElementById("importBtn"),
-  importFile: document.getElementById("importFile")
+  importFile: document.getElementById("importFile"),
+  importModal: document.getElementById("importModal"),
+  modalTotalCount: document.getElementById("modalTotalCount"),
+  modalNewCount: document.getElementById("modalNewCount"),
+  modalDuplicateCount: document.getElementById("modalDuplicateCount"),
+  modalCancelBtn: document.getElementById("modalCancelBtn"),
+  modalReplaceBtn: document.getElementById("modalReplaceBtn"),
+  modalMergeBtn: document.getElementById("modalMergeBtn")
 };
+
+function showNotificationToast(message) {
+  if (!elements.toast) return;
+  elements.toast.style.display = "flex";
+  const toastMsg = document.getElementById("toastMsg");
+  if (toastMsg) toastMsg.textContent = message;
+  if (elements.undoBtn) elements.undoBtn.style.display = "none";
+  setTimeout(() => {
+    hideToast(elements.toast);
+    if (elements.undoBtn) elements.undoBtn.style.display = "block";
+    if (toastMsg) toastMsg.textContent = "Rule deleted.";
+  }, 3500);
+}
 
 function loadRules() {
   chrome.storage.sync.get(["rules"], (data) => {
@@ -30,15 +50,21 @@ if (elements.exportBtn) {
   elements.exportBtn.addEventListener("click", () => {
     chrome.storage.sync.get(["rules"], (data) => {
       const rules = Array.isArray(data.rules) ? data.rules : [];
-      const blob = new Blob([JSON.stringify(rules, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "redirect_rules.json";
-      a.click();
-      URL.revokeObjectURL(url);
+      if (rules.length === 0) {
+        showNotificationToast("No rules to export.");
+        return;
+      }
+      exportRulesToJson(rules);
+      showNotificationToast(`Exported ${rules.length} rule${rules.length === 1 ? "" : "s"}.`);
     });
   });
+}
+
+let pendingImportRules = null;
+
+function hideImportModal() {
+  if (elements.importModal) elements.importModal.style.display = "none";
+  pendingImportRules = null;
 }
 
 if (elements.importBtn && elements.importFile) {
@@ -48,30 +74,63 @@ if (elements.importBtn && elements.importFile) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
-      try {
-        const newRules = JSON.parse(event.target.result);
-        if (Array.isArray(newRules)) {
-          saveRules(newRules, loadRules);
-          if (elements.toast) {
-            elements.toast.style.display = "flex";
-            const toastMsg = document.getElementById("toastMsg");
-            if (toastMsg) toastMsg.textContent = "Rules imported successfully.";
-            if (elements.undoBtn) elements.undoBtn.style.display = "none";
-            setTimeout(() => {
-              hideToast(elements.toast);
-              if (elements.undoBtn) elements.undoBtn.style.display = "block";
-              if (toastMsg) toastMsg.textContent = "Rule deleted.";
-            }, 3000);
-          }
-        } else {
-          alert("Invalid rules format");
-        }
-      } catch (err) {
-        alert("Invalid JSON file");
+      const result = parseAndValidateRules(event.target.result);
+      if (!result.valid) {
+        showNotificationToast(result.error || "Invalid rules format.");
+        elements.importFile.value = "";
+        return;
       }
+
+      chrome.storage.sync.get(["rules"], (data) => {
+        const existingRules = Array.isArray(data.rules) ? data.rules : [];
+        pendingImportRules = result.rules;
+
+        if (existingRules.length === 0) {
+          saveRules(result.rules, () => {
+            loadRules();
+            showNotificationToast(`Imported ${result.rules.length} rule${result.rules.length === 1 ? "" : "s"}.`);
+          });
+        } else {
+          const stats = mergeRules(existingRules, result.rules);
+          if (elements.modalTotalCount) elements.modalTotalCount.textContent = result.rules.length;
+          if (elements.modalNewCount) elements.modalNewCount.textContent = stats.addedCount;
+          if (elements.modalDuplicateCount) elements.modalDuplicateCount.textContent = stats.duplicateCount;
+          if (elements.importModal) elements.importModal.style.display = "flex";
+        }
+      });
       elements.importFile.value = "";
     };
     reader.readAsText(file);
+  });
+}
+
+if (elements.modalCancelBtn) {
+  elements.modalCancelBtn.addEventListener("click", hideImportModal);
+}
+
+if (elements.modalMergeBtn) {
+  elements.modalMergeBtn.addEventListener("click", () => {
+    if (!pendingImportRules) return;
+    chrome.storage.sync.get(["rules"], (data) => {
+      const existingRules = Array.isArray(data.rules) ? data.rules : [];
+      const stats = mergeRules(existingRules, pendingImportRules);
+      saveRules(stats.mergedRules, () => {
+        loadRules();
+        hideImportModal();
+        showNotificationToast(`Merged ${stats.addedCount} new rule${stats.addedCount === 1 ? "" : "s"}.`);
+      });
+    });
+  });
+}
+
+if (elements.modalReplaceBtn) {
+  elements.modalReplaceBtn.addEventListener("click", () => {
+    if (!pendingImportRules) return;
+    saveRules(pendingImportRules, () => {
+      loadRules();
+      hideImportModal();
+      showNotificationToast(`Replaced all rules with ${pendingImportRules.length} imported rule${pendingImportRules.length === 1 ? "" : "s"}.`);
+    });
   });
 }
 

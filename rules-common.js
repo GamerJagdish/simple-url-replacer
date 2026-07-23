@@ -14,6 +14,119 @@ let undoTimeout = null;
 let deletedRule = null;
 let deletedIndex = -1;
 
+function exportRulesToJson(rules) {
+  const exportData = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    rules: Array.isArray(rules) ? rules : []
+  };
+  const jsonStr = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `redirect-rules-${dateStr}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function parseAndValidateRules(jsonString) {
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonString);
+  } catch (err) {
+    return { valid: false, error: "Invalid JSON syntax." };
+  }
+
+  let rawRules = [];
+  if (Array.isArray(parsed)) {
+    rawRules = parsed;
+  } else if (parsed && typeof parsed === "object" && Array.isArray(parsed.rules)) {
+    rawRules = parsed.rules;
+  } else {
+    return { valid: false, error: "JSON file does not contain a valid rules list." };
+  }
+
+  const validRules = [];
+  let invalidCount = 0;
+
+  for (const item of rawRules) {
+    if (!item || typeof item !== "object") {
+      invalidCount++;
+      continue;
+    }
+
+    const isRegex = Boolean(item.isRegex);
+    let from = typeof item.from === "string" ? item.from.trim() : "";
+    let to = typeof item.to === "string" ? item.to.trim() : "";
+
+    if (!from || !to) {
+      invalidCount++;
+      continue;
+    }
+
+    if (!isRegex) {
+      from = cleanDomain(from);
+      to = cleanDomain(to);
+      if (!from || !to) {
+        invalidCount++;
+        continue;
+      }
+    } else {
+      try {
+        new RegExp(from);
+      } catch (e) {
+        invalidCount++;
+        continue;
+      }
+    }
+
+    const enabled = item.enabled !== false;
+    validRules.push({ from, to, enabled, isRegex });
+  }
+
+  if (validRules.length === 0 && rawRules.length > 0) {
+    return { valid: false, error: "No valid rules found in JSON file." };
+  }
+
+  return {
+    valid: true,
+    rules: validRules,
+    totalParsed: rawRules.length,
+    invalidCount
+  };
+}
+
+function mergeRules(existingRules, incomingRules) {
+  const current = Array.isArray(existingRules) ? [...existingRules] : [];
+  const incoming = Array.isArray(incomingRules) ? incomingRules : [];
+
+  let addedCount = 0;
+  let duplicateCount = 0;
+
+  const merged = [...current];
+
+  for (const newRule of incoming) {
+    const isDuplicate = merged.some(
+      (r) => r.from.toLowerCase() === newRule.from.toLowerCase() && Boolean(r.isRegex) === Boolean(newRule.isRegex)
+    );
+
+    if (isDuplicate) {
+      duplicateCount++;
+    } else {
+      merged.push(newRule);
+      addedCount++;
+    }
+  }
+
+  return {
+    mergedRules: merged,
+    addedCount,
+    duplicateCount
+  };
+}
+
 function showToast(toastEl) {
   if (!toastEl) return;
   toastEl.style.display = "flex";

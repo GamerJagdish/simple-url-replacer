@@ -13,8 +13,14 @@
     <header style="display:flex; justify-content:space-between; align-items:center;">
       <h1>URL Redirect Rules</h1>
       <div style="display:flex; gap:8px;">
-        <button class="secondary" id="exportBtn" style="padding: 6px 12px; margin: 0;">Export</button>
-        <button class="secondary" id="importBtn" style="padding: 6px 12px; margin: 0;">Import</button>
+        <button class="secondary" id="exportBtn" style="padding: 6px 12px; margin: 0; display: inline-flex; align-items: center; gap: 6px;" title="Export rules as JSON">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Export</span>
+        </button>
+        <button class="secondary" id="importBtn" style="padding: 6px 12px; margin: 0; display: inline-flex; align-items: center; gap: 6px;" title="Import rules from JSON">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Import</span>
+        </button>
         <input type="file" id="importFile" accept=".json" style="display:none;">
       </div>
     </header>
@@ -60,6 +66,35 @@
   <div id="toast" class="toast" style="display:none;">
     <span id="toastMsg">Rule deleted.</span>
     <button id="undoBtn" class="undo-btn">Undo</button>
+  </div>
+
+  <!-- Import Modal Overlay -->
+  <div id="importModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-card">
+      <h3 class="modal-title">Import Redirect Rules</h3>
+      <div class="modal-body">
+        Select how you would like to handle the incoming rules:
+        <div class="modal-summary">
+          <div class="modal-summary-item">
+            <span>Rules in file:</span>
+            <span id="modalTotalCount" class="count">0</span>
+          </div>
+          <div class="modal-summary-item">
+            <span>New rules to add:</span>
+            <span id="modalNewCount" class="count">0</span>
+          </div>
+          <div class="modal-summary-item">
+            <span>Duplicates detected:</span>
+            <span id="modalDuplicateCount" class="count">0</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="modalCancelBtn" class="secondary">Cancel</button>
+        <button id="modalReplaceBtn" class="danger">Replace All</button>
+        <button id="modalMergeBtn" class="add">Merge Rules</button>
+      </div>
+    </div>
   </div>
 
   <script src="rules-common.js"></script>
