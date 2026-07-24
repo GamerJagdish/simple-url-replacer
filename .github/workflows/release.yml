@@ -69,10 +69,10 @@ jobs:
           
           if [ -z "$PREV_TAG" ]; then
             # If no previous tag, get all commits except ci: and docs:
-            CHANGELOG=$(git log --grep="^(ci|docs):" --invert-grep -i --format="* %s (%h)")
+            CHANGELOG=$(git log -E --grep="^(ci|docs):" --invert-grep -i --format="* %s (%h)")
           else
             # Get all commits since the previous version tag except ci: and docs:
-            CHANGELOG=$(git log ${PREV_TAG}..HEAD --grep="^(ci|docs):" --invert-grep -i --format="* %s (%h)")
+            CHANGELOG=$(git log -E ${PREV_TAG}..HEAD --grep="^(ci|docs):" --invert-grep -i --format="* %s (%h)")
           fi
           
           if [ -z "$CHANGELOG" ]; then
